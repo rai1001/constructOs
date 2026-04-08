@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Nav from "@/components/Nav";
 import PricingSlider from "@/components/PricingSlider";
 import PricingTable from "@/components/PricingTable";
@@ -8,12 +8,34 @@ import {
   calcularPricingPremium,
   calcularPricingAgresivo,
 } from "@/lib/pricing";
+import { usePaso } from "@/lib/use-paso";
 
 export default function PricingPage() {
   const [leads, setLeads] = useState(200);
   const [gastoAds, setGastoAds] = useState(500);
   const [ticket, setTicket] = useState(150);
   const [mode, setMode] = useState<"premium" | "agresivo">("premium");
+  const { guardar, cargar, tieneProyecto } = usePaso("pricing");
+
+  useEffect(() => {
+    cargar().then((d) => {
+      if (d?.metadata) {
+        const m = d.metadata as Record<string, number | string>;
+        if (m.leads) setLeads(m.leads as number);
+        if (m.gastoAds) setGastoAds(m.gastoAds as number);
+        if (m.ticket) setTicket(m.ticket as number);
+        if (m.mode) setMode(m.mode as "premium" | "agresivo");
+      }
+    });
+  }, [cargar]);
+
+  const handleSave = useCallback(() => {
+    if (!tieneProyecto) return;
+    guardar(
+      JSON.stringify({ leads, gastoAds, ticket, mode }),
+      { leads, gastoAds, ticket, mode }
+    );
+  }, [tieneProyecto, guardar, leads, gastoAds, ticket, mode]);
 
   const inputs = useMemo(
     () => ({ leadsMensuales: leads, gastoAds, ticketPromedio: ticket }),
@@ -41,6 +63,9 @@ export default function PricingPage() {
           <p className="text-zinc-400 text-lg max-w-xl mx-auto">
             Ajusta los parametros del cliente y obtiene precios sugeridos para
             tus servicios de automatizacion con IA.
+          </p>
+          <p className="text-xs text-zinc-600 mt-2">
+            Precios orientativos basados en modelos de conversion estimados — ajusta segun tu mercado real
           </p>
         </div>
 
@@ -111,6 +136,15 @@ export default function PricingPage() {
                   : "Precios bajos para captar volumen rápido"}
               </p>
             </div>
+
+            {tieneProyecto && (
+              <button
+                onClick={handleSave}
+                className="w-full mt-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors border border-zinc-700"
+              >
+                Guardar en proyecto
+              </button>
+            )}
           </div>
 
           {/* Results */}

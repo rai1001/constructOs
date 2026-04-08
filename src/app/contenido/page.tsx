@@ -3,9 +3,10 @@
 import { useState, useCallback } from "react";
 import Nav from "@/components/Nav";
 import AnalysisResult from "@/components/AnalysisResult";
+import { useClaudeStream } from "@/lib/use-claude-stream";
 
 const TIPOS = [
-  { id: "organico", label: "Contenido Orgánico", desc: "Plan semanal TikTok/Reels/Stories" },
+  { id: "organico", label: "Contenido Organico", desc: "Plan semanal TikTok/Reels/Stories" },
   { id: "flyer", label: "Flyers / Anuncios", desc: "Prompts de imagen + textos publicitarios" },
 ];
 
@@ -15,39 +16,16 @@ export default function ContenidoPage() {
   const [tipo, setTipo] = useState("organico");
   const [nicho, setNicho] = useState("");
   const [tono, setTono] = useState(TONOS[0]);
-  const [content, setContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { content, isLoading, generate } = useClaudeStream("contenido");
 
   const handleGenerate = useCallback(async () => {
     if (!nicho.trim() || isLoading) return;
-    setIsLoading(true);
-    setContent("");
-
-    try {
-      const res = await fetch("/api/generar-contenido", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, nicho: nicho.trim(), tono }),
-      });
-
-      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
-      const reader = res.body?.getReader();
-      if (!reader) { setContent("Error"); setIsLoading(false); return; }
-
-      const decoder = new TextDecoder();
-      let acc = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setContent(acc);
-      }
-    } catch {
-      setContent("Error: No se pudo conectar");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tipo, nicho, tono, isLoading]);
+    await generate(
+      "/api/generar-contenido",
+      { tipo, nicho: nicho.trim(), tono },
+      { tipo, nicho, tono }
+    );
+  }, [tipo, nicho, tono, isLoading, generate]);
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -64,7 +42,6 @@ export default function ContenidoPage() {
         </div>
 
         <div className="max-w-3xl mx-auto bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8">
-          {/* Tipo selector */}
           <div className="grid grid-cols-2 gap-3 mb-5">
             {TIPOS.map((t) => (
               <button
@@ -96,7 +73,7 @@ export default function ContenidoPage() {
                 disabled={isLoading}
               />
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {["Agencia de IA", "Restaurante", "Clínica dental", "Inmobiliaria"].map((n) => (
+                {["Agencia de IA", "Restaurante", "Clinica dental", "Inmobiliaria"].map((n) => (
                   <button key={n} onClick={() => setNicho(n)} disabled={isLoading}
                     className="px-2 py-0.5 text-xs bg-zinc-800 border border-zinc-700 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors disabled:opacity-50">
                     {n}

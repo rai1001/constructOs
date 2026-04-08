@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Nav from "@/components/Nav";
-import { supabase, Proyecto } from "@/lib/supabase";
+import { Proyecto } from "@/lib/supabase";
 
 const ESTADOS = {
   activo: { label: "Activo", color: "bg-green-500/20 text-green-400" },
@@ -21,22 +21,21 @@ export default function ProyectosPage() {
 
   const fetchProyectos = useCallback(async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from("proyectos")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (err) {
-      setError(
-        err.message.includes("does not exist")
-          ? "Tabla 'proyectos' no existe. Ejecuta el SQL en el dashboard de Supabase."
-          : err.message
-      );
-    } else {
-      setProyectos((data as Proyecto[]) || []);
+    try {
+      const res = await fetch("/api/proyectos");
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error || "Error al cargar proyectos");
+        return;
+      }
+      const data = await res.json();
+      setProyectos(data as Proyecto[]);
       setError("");
+    } catch {
+      setError("No se pudo conectar con el servidor");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -46,37 +45,39 @@ export default function ProyectosPage() {
   const handleCreate = async () => {
     if (!nombre.trim() || !nicho.trim() || saving) return;
     setSaving(true);
-    const { error: err } = await supabase.from("proyectos").insert({
-      nombre: nombre.trim(),
-      nicho: nicho.trim(),
-      estado: "activo",
-      datos: {},
-    });
-    if (err) {
-      setError(err.message);
-    } else {
-      setNombre("");
-      setNicho("");
-      setShowForm(false);
-      fetchProyectos();
+    try {
+      const res = await fetch("/api/proyectos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: nombre.trim(), nicho: nicho.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error || "Error al crear proyecto");
+      } else {
+        setNombre("");
+        setNicho("");
+        setShowForm(false);
+        fetchProyectos();
+      }
+    } catch {
+      setError("Error de conexión");
     }
     setSaving(false);
   };
 
   const handleDelete = async (id: string) => {
-    const { error: err } = await supabase
-      .from("proyectos")
-      .delete()
-      .eq("id", id);
-    if (!err) fetchProyectos();
+    const res = await fetch(`/api/proyectos/${id}`, { method: "DELETE" });
+    if (res.ok) fetchProyectos();
   };
 
   const handleEstado = async (id: string, estado: string) => {
-    const { error: err } = await supabase
-      .from("proyectos")
-      .update({ estado, updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (!err) fetchProyectos();
+    const res = await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    });
+    if (res.ok) fetchProyectos();
   };
 
   return (
@@ -98,40 +99,16 @@ export default function ProyectosPage() {
           </button>
         </div>
 
-        {/* Error / SQL instructions */}
+        {/* Error */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 mb-6">
-            <p className="text-red-400 font-medium mb-2">Error: {error}</p>
-            {error.includes("no existe") && (
-              <div>
-                <p className="text-zinc-400 text-sm mb-3">
-                  Ejecuta este SQL en el SQL Editor de Supabase (supabase.com → tu proyecto → SQL Editor):
-                </p>
-                <pre className="bg-zinc-950 rounded-lg p-4 text-xs text-zinc-300 font-mono overflow-x-auto">
-{`create table public.proyectos (
-  id uuid default gen_random_uuid() primary key,
-  nombre text not null,
-  nicho text not null,
-  estado text default 'activo'
-    check (estado in ('activo', 'pausado', 'completado')),
-  datos jsonb default '{}'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table public.proyectos enable row level security;
-
-create policy "Allow all for now" on public.proyectos
-  for all using (true) with check (true);`}
-                </pre>
-                <button
-                  onClick={fetchProyectos}
-                  className="mt-3 px-4 py-2 bg-zinc-800 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors"
-                >
-                  Reintentar conexion
-                </button>
-              </div>
-            )}
+            <p className="text-red-400 font-medium">{error}</p>
+            <button
+              onClick={fetchProyectos}
+              className="mt-3 px-4 py-2 bg-zinc-800 text-white text-sm rounded-lg hover:bg-zinc-700 transition-colors"
+            >
+              Reintentar
+            </button>
           </div>
         )}
 
@@ -150,7 +127,7 @@ create policy "Allow all for now" on public.proyectos
                   type="text"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Ej: Clínica Dental Sonríe, Taberna El Rincón..."
+                  placeholder="Ej: Clinica Dental Sonrie, Taberna El Rincon..."
                   className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -162,7 +139,7 @@ create policy "Allow all for now" on public.proyectos
                   type="text"
                   value={nicho}
                   onChange={(e) => setNicho(e.target.value)}
-                  placeholder="Ej: Restaurante, Clínica dental..."
+                  placeholder="Ej: Restaurante, Clinica dental..."
                   className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

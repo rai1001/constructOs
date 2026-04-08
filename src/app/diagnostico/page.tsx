@@ -3,24 +3,28 @@
 import { useState, useCallback } from "react";
 import Nav from "@/components/Nav";
 import AnalysisResult from "@/components/AnalysisResult";
+import { useClaudeStream } from "@/lib/use-claude-stream";
 
 const PROBLEMAS = [
   { id: "landing", label: "Landing Pages", desc: "Tu web no convierte visitantes en clientes" },
-  { id: "captacion", label: "Captación de Leads", desc: "Sin leads no hay ventas, dependes del boca a boca" },
-  { id: "atencion", label: "Atención a Leads", desc: "Pierdes leads porque no respondes rápido" },
-  { id: "seguimiento", label: "Seguimientos y Recordatorios", desc: "El dinero está en el seguimiento y lo haces manual" },
+  { id: "captacion", label: "Captacion de Leads", desc: "Sin leads no hay ventas, dependes del boca a boca" },
+  { id: "atencion", label: "Atencion a Leads", desc: "Pierdes leads porque no respondes rapido" },
+  { id: "seguimiento", label: "Seguimientos y Recordatorios", desc: "El dinero esta en el seguimiento y lo haces manual" },
   { id: "ltv", label: "Lifetime Value (LTV)", desc: "Clientes vienen una vez y no vuelven" },
-  { id: "fidelizacion", label: "Fidelización", desc: "No tienes sistema para retener clientes" },
-  { id: "comunicacion", label: "Ofertas y Comunicación", desc: "No comunicas promociones de forma efectiva" },
+  { id: "fidelizacion", label: "Fidelizacion", desc: "No tienes sistema para retener clientes" },
+  { id: "comunicacion", label: "Ofertas y Comunicacion", desc: "No comunicas promociones de forma efectiva" },
   { id: "upsell", label: "Upsell / Cross-sell", desc: "No aprovechas oportunidades de venta adicional" },
 ];
 
 export default function DiagnosticoPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [nicho, setNicho] = useState("");
-  const [content, setContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
+  const { content, isLoading, generate } = useClaudeStream("diagnostico");
+
+  // Si hay contenido cargado del proyecto, mostrar paso 2
+  const showResults = content && !isLoading && step === 1;
+  if (showResults) setStep(2);
 
   const toggleProblem = (id: string) => {
     setSelected((prev) =>
@@ -30,39 +34,18 @@ export default function DiagnosticoPage() {
 
   const handleGenerate = useCallback(async () => {
     if (!selected.length) return;
-    setIsLoading(true);
-    setContent("");
     setStep(2);
 
     const problemas = selected.map(
       (id) => PROBLEMAS.find((p) => p.id === id)?.label + ": " + PROBLEMAS.find((p) => p.id === id)?.desc
     );
 
-    try {
-      const res = await fetch("/api/generar-soluciones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problemas, nicho: nicho.trim() || "Negocio local" }),
-      });
-
-      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
-      const reader = res.body?.getReader();
-      if (!reader) { setContent("Error"); setIsLoading(false); return; }
-
-      const decoder = new TextDecoder();
-      let acc = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setContent(acc);
-      }
-    } catch {
-      setContent("Error: No se pudo conectar");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selected, nicho]);
+    await generate(
+      "/api/generar-soluciones",
+      { problemas, nicho: nicho.trim() || "Negocio local" },
+      { problemas: selected }
+    );
+  }, [selected, nicho, generate]);
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -103,7 +86,6 @@ export default function DiagnosticoPage() {
 
         {step === 1 && (
           <div className="max-w-3xl mx-auto">
-            {/* Nicho input */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Nicho del cliente (opcional)
@@ -112,12 +94,11 @@ export default function DiagnosticoPage() {
                 type="text"
                 value={nicho}
                 onChange={(e) => setNicho(e.target.value)}
-                placeholder="Ej: Restaurante, Clínica dental..."
+                placeholder="Ej: Restaurante, Clinica dental..."
                 className="w-full max-w-sm px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Problems grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
               {PROBLEMAS.map((p) => (
                 <button
@@ -173,7 +154,7 @@ export default function DiagnosticoPage() {
               onClick={() => setStep(1)}
               className="mb-4 text-sm text-zinc-400 hover:text-white transition-colors"
             >
-              ← Volver a problemas
+              &larr; Volver a problemas
             </button>
             <AnalysisResult content={content} isLoading={isLoading} />
           </div>

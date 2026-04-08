@@ -3,59 +3,37 @@
 import { useState, useCallback } from "react";
 import Nav from "@/components/Nav";
 import AnalysisResult from "@/components/AnalysisResult";
+import { useClaudeStream } from "@/lib/use-claude-stream";
 
 const NICHOS = [
   "Restaurante",
-  "Clínica dental",
+  "Clinica dental",
   "Inmobiliaria",
-  "Clínica estética",
-  "Taller mecánico",
+  "Clinica estetica",
+  "Taller mecanico",
   "Gimnasio",
 ];
 
 const SERVICIOS = [
   "Agente WhatsApp 24/7",
-  "Automatización de reservas",
-  "Sistema de captación de leads con IA",
-  "Atención al cliente automatizada",
+  "Automatizacion de reservas",
+  "Sistema de captacion de leads con IA",
+  "Atencion al cliente automatizada",
 ];
 
 export default function ScriptsPage() {
   const [nicho, setNicho] = useState("");
   const [servicio, setServicio] = useState(SERVICIOS[0]);
-  const [content, setContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { content, isLoading, generate } = useClaudeStream("scripts");
 
   const handleGenerate = useCallback(async () => {
     if (!nicho.trim() || isLoading) return;
-    setIsLoading(true);
-    setContent("");
-
-    try {
-      const res = await fetch("/api/generar-script", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nicho: nicho.trim(), servicio }),
-      });
-
-      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
-      const reader = res.body?.getReader();
-      if (!reader) { setContent("Error"); setIsLoading(false); return; }
-
-      const decoder = new TextDecoder();
-      let acc = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setContent(acc);
-      }
-    } catch {
-      setContent("Error: No se pudo conectar");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [nicho, servicio, isLoading]);
+    await generate(
+      "/api/generar-script",
+      { nicho: nicho.trim(), servicio },
+      { nicho, servicio }
+    );
+  }, [nicho, servicio, isLoading, generate]);
 
   return (
     <div className="min-h-screen bg-zinc-950">

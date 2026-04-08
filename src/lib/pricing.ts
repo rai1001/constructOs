@@ -30,7 +30,9 @@ export function calcularPricingPremium(inputs: PricingInputs): PricingResult {
   const ingresoEstimado = clientesNuevos * ticketPromedio;
 
   // Pricing basado en valor entregado (10-20% del valor generado)
-  const valorBase = ingresoEstimado * 0.15;
+  // gastoAds se incluye en el cálculo de ROI: el cliente ya invierte en ads,
+  // nuestro servicio mejora su conversión sobre ese gasto existente
+  const valorBase = (ingresoEstimado + gastoAds * 0.1) * 0.15;
 
   const servicios: ServicioPricing[] = [
     {
@@ -63,10 +65,13 @@ export function calcularPricingPremium(inputs: PricingInputs): PricingResult {
     },
   ];
 
+  // ROI incluye gasto en ads como inversión total del cliente
+  const inversionTotal = servicios[3].mensual + gastoAds;
+
   return {
     servicios,
     ingresoEstimadoCliente: Math.round(ingresoEstimado),
-    roiEstimado: `${Math.round(ingresoEstimado / (servicios[3].mensual || 1))}x`,
+    roiEstimado: `${Math.round(ingresoEstimado / (inversionTotal || 1))}x`,
   };
 }
 
@@ -83,6 +88,6 @@ export function calcularPricingAgresivo(inputs: PricingInputs): PricingResult {
   return {
     servicios,
     ingresoEstimadoCliente: premium.ingresoEstimadoCliente,
-    roiEstimado: `${Math.round(premium.ingresoEstimadoCliente / (servicios[3].mensual || 1))}x`,
+    roiEstimado: `${Math.round(premium.ingresoEstimadoCliente / ((servicios[3].mensual + inputs.gastoAds) || 1))}x`,
   };
 }

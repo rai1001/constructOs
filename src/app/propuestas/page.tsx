@@ -2,56 +2,30 @@
 
 import { useState, useCallback } from "react";
 import Nav from "@/components/Nav";
+import { useClaudeStream } from "@/lib/use-claude-stream";
 
 const CANALES = [
-  "Reunión por Zoom",
-  "Reunión presencial",
-  "Envío por email",
-  "Presentación en evento",
+  "Reunion por Zoom",
+  "Reunion presencial",
+  "Envio por email",
+  "Presentacion en evento",
 ];
 
 export default function PropuestasPage() {
   const [agencia, setAgencia] = useState("");
   const [nicho, setNicho] = useState("");
   const [canal, setCanal] = useState(CANALES[0]);
-  const [content, setContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { content, isLoading, generate } = useClaudeStream("propuestas");
 
   const handleGenerate = useCallback(async () => {
     if (!nicho.trim() || isLoading) return;
-    setIsLoading(true);
-    setContent("");
-
-    try {
-      const res = await fetch("/api/generar-propuesta", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agencia: agencia.trim() || "Mi Agencia IA",
-          nicho: nicho.trim(),
-          canal,
-        }),
-      });
-
-      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
-      const reader = res.body?.getReader();
-      if (!reader) { setContent("Error"); setIsLoading(false); return; }
-
-      const decoder = new TextDecoder();
-      let acc = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setContent(acc);
-      }
-    } catch {
-      setContent("Error: No se pudo conectar");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [agencia, nicho, canal, isLoading]);
+    await generate(
+      "/api/generar-propuesta",
+      { agencia: agencia.trim() || "Mi Agencia IA", nicho: nicho.trim(), canal },
+      { agencia, nicho, canal }
+    );
+  }, [agencia, nicho, canal, isLoading, generate]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
@@ -100,12 +74,12 @@ export default function PropuestasPage() {
                 type="text"
                 value={nicho}
                 onChange={(e) => setNicho(e.target.value)}
-                placeholder="Ej: Clínica dental..."
+                placeholder="Ej: Clinica dental..."
                 className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isLoading}
               />
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {["Restaurante", "Clínica dental", "Inmobiliaria", "Clínica estética"].map((n) => (
+                {["Restaurante", "Clinica dental", "Inmobiliaria", "Clinica estetica"].map((n) => (
                   <button key={n} onClick={() => setNicho(n)} disabled={isLoading}
                     className="px-2 py-0.5 text-xs bg-zinc-800 border border-zinc-700 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors disabled:opacity-50">
                     {n}

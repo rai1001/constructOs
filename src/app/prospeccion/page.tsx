@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
+import { usePaso } from "@/lib/use-paso";
 
 interface Prospect {
   nombre: string;
@@ -41,8 +42,15 @@ export default function ProspeccionPage() {
   const [ubicacion, setUbicacion] = useState("");
   const [results, setResults] = useState<Prospect[]>([]);
   const [totalEstimado, setTotalEstimado] = useState(0);
+  const { guardar, cargar, tieneProyecto } = usePaso("prospeccion");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    cargar().then((d) => {
+      if (d) { try { const p = JSON.parse(d.contenido); setResults(p.resultados || []); setTotalEstimado(p.total_estimado || 0); } catch {} }
+    });
+  }, [cargar]);
 
   const handleSearch = async () => {
     if (!sector.trim() || !ubicacion.trim()) return;
@@ -62,6 +70,7 @@ export default function ProspeccionPage() {
       } else {
         setResults(data.resultados || []);
         setTotalEstimado(data.total_estimado || 0);
+        if (tieneProyecto) guardar(JSON.stringify(data), { sector, ubicacion });
       }
     } catch {
       setError("No se pudo conectar con el servidor");

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Nav from "@/components/Nav";
 import LandingPreview from "@/components/LandingPreview";
+import { usePaso } from "@/lib/use-paso";
 
 const NICHOS_RAPIDOS = [
   "Restaurante",
@@ -17,8 +18,13 @@ export default function LandingPage() {
   const [agencia, setAgencia] = useState("");
   const [nicho, setNicho] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { guardar, cargar, tieneProyecto } = usePaso("landing");
   const [landingData, setLandingData] = useState(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    cargar().then((d) => { if (d) { try { setLandingData(JSON.parse(d.contenido)); } catch {} } });
+  }, [cargar]);
 
   const handleGenerate = async () => {
     if (!agencia.trim() || !nicho.trim()) return;
@@ -38,6 +44,7 @@ export default function LandingPage() {
         setError(data.error || "Error al generar la landing");
       } else {
         setLandingData(data);
+        if (tieneProyecto) guardar(JSON.stringify(data), { agencia, nicho });
       }
     } catch {
       setError("No se pudo conectar con el servidor");

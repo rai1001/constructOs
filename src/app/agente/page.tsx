@@ -2,40 +2,41 @@
 
 import { useState, useCallback } from "react";
 import Nav from "@/components/Nav";
+import { useClaudeStream } from "@/lib/use-claude-stream";
 
 const OBJETIVOS = [
   "Agendar cita / reserva",
   "Cualificar leads y pasar a ventas",
-  "Atención al cliente 24/7",
+  "Atencion al cliente 24/7",
   "Tomar pedidos por WhatsApp",
 ];
 
 const TONOS = ["Cercano y natural", "Profesional y formal", "Directo y conciso"];
-const TRATAMIENTOS = ["Tutear (tú)", "Ustedear (usted)"];
+const TRATAMIENTOS = ["Tutear (tu)", "Ustedear (usted)"];
 
 const PRESETS: Record<
   string,
   { servicios: string; horario: string; objetivo: string }
 > = {
   Restaurante: {
-    servicios: "Reservas, menú del día, eventos privados, pedidos a domicilio",
+    servicios: "Reservas, menu del dia, eventos privados, pedidos a domicilio",
     horario: "Martes a domingo, 13:00-16:00 y 20:00-23:30",
     objetivo: "Agendar cita / reserva",
   },
-  "Clínica dental": {
+  "Clinica dental": {
     servicios:
       "Limpieza dental, ortodoncia, implantes, blanqueamiento, revisiones",
     horario: "Lunes a viernes, 9:00-14:00 y 16:00-20:00",
     objetivo: "Agendar cita / reserva",
   },
   Inmobiliaria: {
-    servicios: "Venta de pisos, alquiler, valoraciones gratuitas, gestión",
-    horario: "Lunes a viernes, 9:30-14:00 y 16:30-19:30. Sábados 10:00-13:00",
+    servicios: "Venta de pisos, alquiler, valoraciones gratuitas, gestion",
+    horario: "Lunes a viernes, 9:30-14:00 y 16:30-19:30. Sabados 10:00-13:00",
     objetivo: "Cualificar leads y pasar a ventas",
   },
-  "Clínica estética": {
+  "Clinica estetica": {
     servicios:
-      "Botox, ácido hialurónico, depilación láser, tratamientos faciales",
+      "Botox, acido hialuronico, depilacion laser, tratamientos faciales",
     horario: "Lunes a viernes, 10:00-14:00 y 16:00-20:00",
     objetivo: "Agendar cita / reserva",
   },
@@ -54,9 +55,8 @@ export default function AgentePage() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [isResearching, setIsResearching] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { content: prompt, isLoading, generate } = useClaudeStream("agente");
 
   const updateField = (field: string, value: string) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
@@ -105,45 +105,9 @@ export default function AgentePage() {
 
   const handleGenerate = useCallback(async () => {
     if (!config.nombreNegocio.trim() || !config.nicho.trim()) return;
-    setIsLoading(true);
-    setPrompt("");
     setCopied(false);
-
-    try {
-      const res = await fetch("/api/generar-agente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        setPrompt(`Error: ${err.error || "Error del servidor"}`);
-        setIsLoading(false);
-        return;
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) {
-        setPrompt("Error: No se pudo leer la respuesta");
-        setIsLoading(false);
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let accumulated = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setPrompt(accumulated);
-      }
-    } catch {
-      setPrompt("Error: No se pudo conectar con el servidor");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [config]);
+    await generate("/api/generar-agente", config, { config });
+  }, [config, generate]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(prompt);
@@ -209,7 +173,6 @@ export default function AgentePage() {
               </p>
             </div>
 
-            {/* Nombre negocio */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Nombre del negocio
@@ -218,12 +181,11 @@ export default function AgentePage() {
                 type="text"
                 value={config.nombreNegocio}
                 onChange={(e) => updateField("nombreNegocio", e.target.value)}
-                placeholder="Ej: Taberna El Rincón, Clínica Dental Sonríe..."
+                placeholder="Ej: Taberna El Rincon, Clinica Dental Sonrie..."
                 className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Nicho con presets */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Nicho / Sector
@@ -232,7 +194,7 @@ export default function AgentePage() {
                 type="text"
                 value={config.nicho}
                 onChange={(e) => updateField("nicho", e.target.value)}
-                placeholder="Ej: Restaurante, Clínica dental..."
+                placeholder="Ej: Restaurante, Clinica dental..."
                 className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
               />
               <div className="flex flex-wrap gap-1.5">
@@ -248,7 +210,6 @@ export default function AgentePage() {
               </div>
             </div>
 
-            {/* Servicios */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Servicios principales
@@ -262,7 +223,6 @@ export default function AgentePage() {
               />
             </div>
 
-            {/* Horario + Ubicación */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1.5">
@@ -290,7 +250,6 @@ export default function AgentePage() {
               </div>
             </div>
 
-            {/* Objetivo */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Objetivo del agente
@@ -308,7 +267,6 @@ export default function AgentePage() {
               </select>
             </div>
 
-            {/* Tono + Tratamiento */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1.5">
@@ -344,7 +302,6 @@ export default function AgentePage() {
               </div>
             </div>
 
-            {/* Generate button */}
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
