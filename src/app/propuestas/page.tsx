@@ -34,6 +34,7 @@ export default function PropuestasPage() {
         }),
       });
 
+      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
       const reader = res.body?.getReader();
       if (!reader) { setContent("Error"); setIsLoading(false); return; }
 

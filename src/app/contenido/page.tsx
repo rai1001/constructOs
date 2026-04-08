@@ -30,6 +30,7 @@ export default function ContenidoPage() {
         body: JSON.stringify({ tipo, nicho: nicho.trim(), tono }),
       });
 
+      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
       const reader = res.body?.getReader();
       if (!reader) { setContent("Error"); setIsLoading(false); return; }
 

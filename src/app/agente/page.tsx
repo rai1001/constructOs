@@ -116,6 +116,13 @@ export default function AgentePage() {
         body: JSON.stringify(config),
       });
 
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        setPrompt(`Error: ${err.error || "Error del servidor"}`);
+        setIsLoading(false);
+        return;
+      }
+
       const reader = res.body?.getReader();
       if (!reader) {
         setPrompt("Error: No se pudo leer la respuesta");

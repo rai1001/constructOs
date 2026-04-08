@@ -38,6 +38,7 @@ export default function ScriptsPage() {
         body: JSON.stringify({ nicho: nicho.trim(), servicio }),
       });
 
+      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
       const reader = res.body?.getReader();
       if (!reader) { setContent("Error"); setIsLoading(false); return; }
 

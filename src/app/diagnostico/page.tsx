@@ -45,6 +45,7 @@ export default function DiagnosticoPage() {
         body: JSON.stringify({ problemas, nicho: nicho.trim() || "Negocio local" }),
       });
 
+      if (!res.ok) { setContent(`Error: ${res.statusText}`); setIsLoading(false); return; }
       const reader = res.body?.getReader();
       if (!reader) { setContent("Error"); setIsLoading(false); return; }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import DOMPurify from "dompurify";
 
 interface AnalysisResultProps {
   content: string;
@@ -30,6 +31,10 @@ function parseMarkdownTable(tableStr: string): {
     .filter((r) => r.length > 0);
 
   return { headers, rows };
+}
+
+function sanitize(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: ["strong"], ALLOWED_ATTR: ["class"] });
 }
 
 function RenderedSection({ section }: { section: string }) {
@@ -75,7 +80,7 @@ function RenderedSection({ section }: { section: string }) {
                       <td
                         key={j}
                         className="px-4 py-3 text-sm text-zinc-300 border border-zinc-700"
-                        dangerouslySetInnerHTML={{ __html: formatted }}
+                        dangerouslySetInnerHTML={{ __html: sanitize(formatted) }}
                       />
                       );
                     })}
@@ -113,7 +118,7 @@ function FormattedText({ text }: { text: string }) {
           return (
             <div key={i} className="flex gap-2 text-zinc-300 pl-2">
               <span className="text-blue-400 mt-0.5 shrink-0">-</span>
-              <span dangerouslySetInnerHTML={{ __html: formatted.slice(2) }} />
+              <span dangerouslySetInnerHTML={{ __html: sanitize(formatted.slice(2)) }} />
             </div>
           );
         }
@@ -130,7 +135,7 @@ function FormattedText({ text }: { text: string }) {
               <span className="text-blue-400 shrink-0">
                 {numberedMatch[1]}.
               </span>
-              <span dangerouslySetInnerHTML={{ __html: rest }} />
+              <span dangerouslySetInnerHTML={{ __html: sanitize(rest) }} />
             </div>
           );
         }
@@ -152,7 +157,7 @@ function FormattedText({ text }: { text: string }) {
           <p
             key={i}
             className="text-zinc-300"
-            dangerouslySetInnerHTML={{ __html: formatted }}
+            dangerouslySetInnerHTML={{ __html: sanitize(formatted) }}
           />
         );
       })}
