@@ -120,10 +120,11 @@ export default function ProyectosPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                <label htmlFor="proyecto-nombre" className="block text-sm font-medium text-zinc-300 mb-1.5">
                   Nombre del proyecto
                 </label>
                 <input
+                  id="proyecto-nombre"
                   type="text"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
@@ -132,10 +133,11 @@ export default function ProyectosPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                <label htmlFor="proyecto-nicho" className="block text-sm font-medium text-zinc-300 mb-1.5">
                   Nicho
                 </label>
                 <input
+                  id="proyecto-nicho"
                   type="text"
                   value={nicho}
                   onChange={(e) => setNicho(e.target.value)}
