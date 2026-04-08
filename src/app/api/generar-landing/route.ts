@@ -1,10 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
-import {
-  SYSTEM_PROMPT,
-  buildUserPrompt,
-} from "@/lib/prompts/generar-landing";
-
-const anthropic = new Anthropic();
+import { createClaudeJSON } from "@/lib/claude-stream";
+import { SYSTEM_PROMPT, buildUserPrompt } from "@/lib/prompts/generar-landing";
 
 export async function POST(request: Request) {
   const { agencia, nicho } = await request.json();
@@ -17,19 +12,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: buildUserPrompt(agencia.trim(), nicho.trim()) },
-      ],
-    });
-
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
-
-    // Parse JSON response
+    const text = await createClaudeJSON(
+      SYSTEM_PROMPT,
+      buildUserPrompt(agencia.trim(), nicho.trim())
+    );
     const landing = JSON.parse(text);
     return Response.json(landing);
   } catch (error) {

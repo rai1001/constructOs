@@ -4,8 +4,10 @@ import { useState, useCallback } from "react";
 import Nav from "@/components/Nav";
 import NicheInput from "@/components/NicheInput";
 import AnalysisResult from "@/components/AnalysisResult";
+import { useConstructor } from "@/lib/store";
 
 export default function Home() {
+  const { setNicho: setGlobalNicho } = useConstructor();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [analyzedNiche, setAnalyzedNiche] = useState("");
@@ -14,6 +16,7 @@ export default function Home() {
     setIsLoading(true);
     setContent("");
     setAnalyzedNiche(nicho);
+    setGlobalNicho(nicho);
 
     try {
       const response = await fetch("/api/analizar-nicho", {

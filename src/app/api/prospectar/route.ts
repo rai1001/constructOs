@@ -1,10 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { createClaudeJSON } from "@/lib/claude-stream";
 
-const anthropic = new Anthropic();
+const SYSTEM_PROMPT = `Eres un scraper de negocios españoles. Generas listas realistas de negocios basándote en sector y ubicación.
 
-const SYSTEM_PROMPT = `Eres un scraper de negocios españoles. Generas listas realistas de negocios reales o verosímiles basándote en el sector y ubicación.
-
-Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura:
+Responde ÚNICAMENTE con JSON válido (sin markdown, sin backticks):
 
 {
   "total_estimado": 150,
@@ -22,16 +20,7 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta 
   ]
 }
 
-REGLAS:
-- Genera exactamente 15 resultados por búsqueda
-- Nombres de negocios realistas para España (no inventados absurdos)
-- Direcciones con calles reales de la ciudad indicada
-- Teléfonos con formato español (6XX para móvil, 9XX para fijo)
-- Emails con dominios plausibles (.es, .com)
-- Ratings entre 3.0 y 5.0
-- total_estimado es una estimación del total de negocios de ese tipo en esa zona
-- Varía los estados: la mayoría "activo", algunos "sin web", alguno "sin email"
-- El JSON debe ser válido y parseable`;
+REGLAS: 15 resultados, nombres realistas para España, direcciones con calles reales, teléfonos formato español, ratings 3.0-5.0, mayoría "activo" con algunos "sin web" o "sin email".`;
 
 export async function POST(request: Request) {
   const { sector, ubicacion } = await request.json();
@@ -44,20 +33,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Busca negocios de tipo "${sector.trim()}" en "${ubicacion.trim()}", España.`,
-        },
-      ],
-    });
-
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = await createClaudeJSON(
+      SYSTEM_PROMPT,
+      `Busca negocios de tipo "${sector.trim()}" en "${ubicacion.trim()}", España.`
+    );
     const data = JSON.parse(text);
     return Response.json(data);
   } catch (error) {
